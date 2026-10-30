@@ -19,6 +19,26 @@ import db
 # 1. 입력·출력 도우미
 # ─────────────────────────────────────────────
 
+def _input(prompt):
+    """input() 대신 쓰는 안전한 입력.
+    SSH로 한글을 치다가 백스페이스로 지우면 글자가 반쪽만 지워져서
+    깨진 바이트가 들어오는 경우가 있다. 그럴 땐 다시 입력받는다.
+    """
+    while True:
+        try:
+            return input(prompt)
+        except UnicodeDecodeError:
+            print("  → 글자가 깨져서 들어왔어요. 다시 입력해 주세요.")
+
+
+def _getpass(prompt):
+    while True:
+        try:
+            return getpass.getpass(prompt)
+        except UnicodeDecodeError:
+            print("  → 글자가 깨져서 들어왔어요. 다시 입력해 주세요.")
+
+
 def title(text):
     print("\n" + "=" * 44)
     print(f"  {text}")
@@ -26,13 +46,13 @@ def title(text):
 
 
 def pause():
-    input("\n(엔터를 누르면 돌아가요)")
+    _input("\n(엔터를 누르면 돌아가요)")
 
 
 def ask(prompt, required=True):
     """글자 입력받기. required면 빈칸일 때 다시 물어본다."""
     while True:
-        value = input(prompt).strip()
+        value = _input(prompt).strip()
         if value or not required:
             return value
         print("  → 비워둘 수 없어요.")
@@ -41,7 +61,7 @@ def ask(prompt, required=True):
 def ask_int(prompt):
     """숫자만 입력받기."""
     while True:
-        value = input(prompt).strip()
+        value = _input(prompt).strip()
         if value.isdigit():
             return int(value)
         print("  → 숫자로 입력해 주세요.")
@@ -50,7 +70,7 @@ def ask_int(prompt):
 def ask_date(prompt):
     """날짜 입력받기. 엔터만 치면 오늘. 형식이 틀리면 다시 물어본다."""
     while True:
-        value = input(prompt).strip()
+        value = _input(prompt).strip()
         if not value:
             return datetime.now().strftime("%Y-%m-%d")
         try:
@@ -94,7 +114,7 @@ def choose_fields():
 
     print("\n  분야: " + "  ".join(f"{f['분야ID']}.{f['분야명']}" for f in fields))
     while True:
-        raw = input("  해당 분야 번호 (여러 개면 1,2 / 없으면 엔터) > ").strip()
+        raw = _input("  해당 분야 번호 (여러 개면 1,2 / 없으면 엔터) > ").strip()
         if not raw:
             return []
         try:
@@ -118,11 +138,11 @@ def first_setup():
     title("처음 실행이네요! 관리자(교사) 계정을 만들어요")
     name = ask("  교사 이름 > ")
     while True:
-        pw = getpass.getpass("  비밀번호 (화면에 안 보여요) > ")
+        pw = _getpass("  비밀번호 (화면에 안 보여요) > ")
         if len(pw) < 4:
             print("  → 4자 이상으로 해 주세요.")
             continue
-        if pw == getpass.getpass("  비밀번호 확인 > "):
+        if pw == _getpass("  비밀번호 확인 > "):
             break
         print("  → 두 비밀번호가 달라요. 다시 입력해 주세요.")
 
@@ -152,7 +172,7 @@ def student_menu(student):
         print("  3. 활동일지 쓰기")
         print("  4. 내 활동일지 보기")
         print("  0. 로그아웃")
-        choice = input("\n  선택 > ").strip()
+        choice = _input("\n  선택 > ").strip()
 
         if choice == "1":
             ok, msg = db.check_in(student["학번"])
@@ -212,7 +232,7 @@ def show_journals(journals):
 
 def teacher_login():
     name = ask("\n  교사 이름 > ")
-    pw = getpass.getpass("  비밀번호 > ")
+    pw = _getpass("  비밀번호 > ")
     teacher = db.verify_teacher(name, pw)
     if teacher is None:
         print("  → 이름 또는 비밀번호가 틀렸어요.")
@@ -233,7 +253,7 @@ def teacher_menu(teacher):
         print("  7. 분야 추가")
         print("  8. 교사 추가")
         print("  0. 로그아웃")
-        choice = input("\n  선택 > ").strip()
+        choice = _input("\n  선택 > ").strip()
 
         if choice == "1":
             date = ask_date("  날짜 (엔터=오늘, 예: 2026-10-30) > ")
@@ -290,7 +310,7 @@ def review_journals(teacher):
         pause()
         return
 
-    raw = input("\n  확인 처리할 일지 번호 (엔터=건너뛰기) > ").strip()
+    raw = _input("\n  확인 처리할 일지 번호 (엔터=건너뛰기) > ").strip()
     if not raw:
         return
     if raw.isdigit() and int(raw) in {j["일지ID"] for j in journals}:
@@ -329,7 +349,7 @@ def delete_student():
         return
 
     print(f"  ※ {student['이름']} 학생의 출석·일지 기록도 전부 지워져요.")
-    if input("  정말 삭제할까요? (y/n) > ").strip().lower() == "y":
+    if _input("  정말 삭제할까요? (y/n) > ").strip().lower() == "y":
         db.delete_student(student_id)
         print("  ✔ 삭제했어요.")
     else:
@@ -340,7 +360,7 @@ def delete_student():
 def add_teacher():
     title("교사 추가")
     name = ask("  교사 이름 > ")
-    pw = getpass.getpass("  비밀번호 > ")
+    pw = _getpass("  비밀번호 > ")
     if len(pw) < 4:
         print("  → 4자 이상으로 해 주세요.")
         pause()
@@ -366,7 +386,7 @@ def main():
         print("  1. 학생 로그인")
         print("  2. 교사 로그인")
         print("  0. 종료")
-        choice = input("\n  선택 > ").strip()
+        choice = _input("\n  선택 > ").strip()
 
         if choice == "1":
             student_login()
